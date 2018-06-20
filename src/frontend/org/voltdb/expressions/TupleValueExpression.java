@@ -28,6 +28,8 @@ import org.voltdb.plannodes.NodeSchema;
 import org.voltdb.plannodes.SchemaColumn;
 import org.voltdb.types.ExpressionType;
 
+import java.util.Comparator;
+
 /**
  *
  */
@@ -129,6 +131,21 @@ public class TupleValueExpression extends AbstractValueExpression {
     public TupleValueExpression() {
         super(ExpressionType.VALUE_TUPLE);
     }
+
+    @Override
+    public int compareTo(AbstractExpression other) {
+        if (other instanceof TupleValueExpression) {
+            final Comparator<String> nullComparator = Comparator.nullsFirst(Comparator.naturalOrder());
+            return Comparator.comparing(TupleValueExpression::getTableName, nullComparator)
+                    .thenComparing(TupleValueExpression::getColumnName, nullComparator)
+                    .thenComparingInt(TupleValueExpression::getColumnIndex)
+                    .thenComparingInt(TupleValueExpression::getDifferentiator)
+                    .compare(this, (TupleValueExpression) other);
+        } else {
+            return super.compareTo(other);
+        }
+    }
+
 
     /*
      *  Only set for the special case of an aggregate function result used in

@@ -19,6 +19,8 @@ package org.voltdb.expressions;
 
 import org.voltdb.types.ExpressionType;
 
+import java.util.Comparator;
+
 /**
  *
  */
@@ -26,6 +28,12 @@ public class InComparisonExpression extends ComparisonExpression {
 
     public InComparisonExpression() {
         super(ExpressionType.COMPARE_IN);
+    }
+
+    public InComparisonExpression(AbstractExpression left, AbstractExpression right) {
+        this();
+        setLeft(left);
+        setRight(right);
     }
 
     @Override
@@ -50,6 +58,26 @@ public class InComparisonExpression extends ComparisonExpression {
         if (!(m_right instanceof VectorValueExpression) && !(m_right instanceof ParameterValueExpression)) {
             throw new Exception("ERROR: The right node for '" + this + "' is not a list or a parameter");
         }
+    }
+
+    @Override
+    public boolean equivalent(AbstractExpression other) {
+        return other instanceof InComparisonExpression &&
+                getLeft().equivalent(other.getLeft()) && getRight().equivalent(other.getRight());
+    }
+
+    @Override
+    public int compareTo(AbstractExpression other) {
+        return equivalent(other) ? 0 : super.compareTo(other);
+    }
+
+    /**
+     * A "x in (a, b, c)" relation cannot be reversed as "x > y" to "y < x", so
+     * we return itself.
+     */
+    @Override
+    public ComparisonExpression reverseOperator() {
+       return this;
     }
 
     @Override
