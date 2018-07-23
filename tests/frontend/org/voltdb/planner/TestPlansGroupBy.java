@@ -153,68 +153,73 @@ public class TestPlansGroupBy extends PlannerTestCase {
                                                       PlanNodeType.PROJECTION)));
 
         // using the partial index with partial aggregation
-        pns = compileToFragments("SELECT C, A, MAX(B) FROM R2 WHERE A > 0 and B > 3 GROUP BY C, A");
-        assertEquals(1, pns.size());
-        p = pns.get(0).getChild(0);
-        assertEquals(PlanNodeType.INDEXSCAN, p.getPlanNodeType());
-        assertNotNull(p.getInlinePlanNode(PlanNodeType.PARTIALAGGREGATE));
-        assertTrue(p.toExplainPlanString().contains("PARTIAL_IDX_R2"));
-
+        validatePlan("SELECT C, A, MAX(B) FROM R2 WHERE A > 0 and B > 3 GROUP BY C, A",
+                     PRINT_JSON_PLAN,
+                     fragSpec(PlanNodeType.SEND,
+                              new PlanWithInlineNodes(PlanNodeType.INDEXSCAN,
+                                                      PlanNodeType.PARTIALAGGREGATE,
+                                                      PlanNodeType.PROJECTION)));
         // Partition IndexScan with HASH aggregate is optimized to use Partial aggregate -
         // index (F_D1) covers part of the GROUP BY columns
-        pns = compileToFragments("SELECT F_D1, F_VAL1, MAX(F_VAL2) FROM F WHERE F_D1 > 0 GROUP BY F_D1, F_VAL1 ORDER BY F_D1, MAX(F_VAL2)");
-        assertEquals(2, pns.size());
-        p = pns.get(1).getChild(0);
-        assertEquals(PlanNodeType.INDEXSCAN, p.getPlanNodeType());
-        assertNotNull(p.getInlinePlanNode(PlanNodeType.PARTIALAGGREGATE));
-        assertTrue(p.toExplainPlanString().contains("COL_F_TREE1"));
+        validatePlan("SELECT F_D1, F_VAL1, MAX(F_VAL2) FROM F WHERE F_D1 > 0 GROUP BY F_D1, F_VAL1 ORDER BY F_D1, MAX(F_VAL2)",
+                     PRINT_JSON_PLAN,
+                     fragSpec(PlanNodeType.SEND,
+                              PlanNodeType.ORDERBY,
+                              PlanNodeType.HASHAGGREGATE,
+                              PlanNodeType.RECEIVE),
+                     fragSpec(PlanNodeType.SEND,
+                              new PlanWithInlineNodes(PlanNodeType.INDEXSCAN,
+                                                      PlanNodeType.PARTIALAGGREGATE,
+                                                      PlanNodeType.PROJECTION)));
 
         // IndexScan with HASH aggregate is optimized to use Serial aggregate -
         // index (F_VAL1, F_VAL2) covers all of the GROUP BY columns
-        pns = compileToFragments("SELECT F_VAL1, F_VAL2, MAX(F_VAL3) FROM RF WHERE F_VAL1 > 0 GROUP BY F_VAL2, F_VAL1");
-        assertEquals(1, pns.size());
-        p = pns.get(0).getChild(0);
-        assertEquals(PlanNodeType.INDEXSCAN, p.getPlanNodeType());
-        assertNotNull(p.getInlinePlanNode(PlanNodeType.AGGREGATE));
-        assertTrue(p.toExplainPlanString().contains("COL_RF_TREE2"));
+        validatePlan("SELECT F_VAL1, F_VAL2, MAX(F_VAL3) FROM RF WHERE F_VAL1 > 0 GROUP BY F_VAL2, F_VAL1",
+                     PRINT_JSON_PLAN,
+                     fragSpec(PlanNodeType.SEND,
+                              new PlanWithInlineNodes(PlanNodeType.INDEXSCAN,
+                                                      PlanNodeType.AGGREGATE,
+                                                      PlanNodeType.PROJECTION)));
 
         // IndexScan with HASH aggregate remains not optimized -
         // The first column index (F_VAL1, F_VAL2) is not part of the GROUP BY
-        pns = compileToFragments("SELECT F_VAL2, MAX(F_VAL2) FROM RF WHERE F_VAL1 > 0 GROUP BY F_VAL2");
-        assertEquals(1, pns.size());
-        p = pns.get(0).getChild(0);
-        assertEquals(PlanNodeType.INDEXSCAN, p.getPlanNodeType());
-        assertNotNull(p.getInlinePlanNode(PlanNodeType.HASHAGGREGATE));
-        assertTrue(p.toExplainPlanString().contains("COL_RF_TREE2"));
+        validatePlan("SELECT F_VAL2, MAX(F_VAL2) FROM RF WHERE F_VAL1 > 0 GROUP BY F_VAL2",
+                     PRINT_JSON_PLAN,
+                     fragSpec(PlanNodeType.SEND,
+                              new PlanWithInlineNodes(PlanNodeType.INDEXSCAN,
+                                                      PlanNodeType.HASHAGGREGATE,
+                                                      PlanNodeType.PROJECTION)));
 
         // Partition IndexScan with HASH aggregate remains unoptimized -
         // index (F_VAL1, F_VAL2) does not cover any of the GROUP BY columns
-        pns = compileToFragments("SELECT MAX(F_VAL2) FROM F WHERE F_VAL1 > 0 GROUP BY F_D1");
-        assertEquals(2, pns.size());
-        p = pns.get(1).getChild(0);
-        assertEquals(PlanNodeType.INDEXSCAN, p.getPlanNodeType());
-        assertNotNull(p.getInlinePlanNode(PlanNodeType.HASHAGGREGATE));
-        assertTrue(p.toExplainPlanString().contains("COL_F_TREE2"));
+        validatePlan("SELECT MAX(F_VAL2) FROM F WHERE F_VAL1 > 0 GROUP BY F_D1",
+                     PRINT_JSON_PLAN,
+                     fragSpec(PlanNodeType.SEND,
+                              PlanNodeType.PROJECTION,
+                              PlanNodeType.HASHAGGREGATE,
+                              PlanNodeType.RECEIVE),
+                     fragSpec(PlanNodeType.SEND,
+                         new PlanWithInlineNodes(PlanNodeType.INDEXSCAN,
+                                                 PlanNodeType.HASHAGGREGATE,
+                                                 PlanNodeType.PROJECTION)));
 
         // IndexScan with HASH aggregate remains unoptimized - the index COL_RF_HASH is not scannable
-        pns = compileToFragments("SELECT F_VAL3, MAX(F_VAL2) FROM RF WHERE F_VAL3 = 0 GROUP BY F_VAL3");
-        assertEquals(1, pns.size());
-        p = pns.get(0).getChild(0);
-        assertEquals(PlanNodeType.INDEXSCAN, p.getPlanNodeType());
-        assertNotNull(p.getInlinePlanNode(PlanNodeType.HASHAGGREGATE));
-        assertTrue(p.toExplainPlanString().contains("COL_RF_HASH"));
+        validatePlan("SELECT F_VAL3, MAX(F_VAL2) FROM RF WHERE F_VAL3 = 0 GROUP BY F_VAL3",
+                     PRINT_JSON_PLAN,
+                     fragSpec(PlanNodeType.SEND,
+                              new PlanWithInlineNodes(PlanNodeType.INDEXSCAN,
+                                                      PlanNodeType.HASHAGGREGATE,
+                                                      PlanNodeType.PROJECTION)));
 
         // where clause not matching
-        pns = compileToFragments("SELECT A, count(B) from R2 where B > 2 group by A order by A;");
-        assertEquals(1, pns.size());
-        p = pns.get(0).getChild(0);
-        if (p instanceof ProjectionPlanNode) {
-            p = p.getChild(0);
-        }
-        assertTrue(p instanceof OrderByPlanNode);
-        p = p.getChild(0);
-        assertTrue(p instanceof SeqScanPlanNode);
-        assertNotNull(p.getInlinePlanNode(PlanNodeType.HASHAGGREGATE));
+        validatePlan("SELECT A, count(B) from R2 where B > 2 group by A order by A;",
+                     PRINT_JSON_PLAN,
+                     fragSpec(PlanNodeType.SEND,
+                              new OptionalPlanNode(PlanNodeType.PROJECTION),
+                              PlanNodeType.ORDERBY,
+                              new PlanWithInlineNodes(PlanNodeType.SEQSCAN,
+                                                      PlanNodeType.HASHAGGREGATE,
+                                                      PlanNodeType.PROJECTION)));
     }
 
     public void testCountStar() {

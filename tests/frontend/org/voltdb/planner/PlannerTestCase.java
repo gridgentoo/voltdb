@@ -729,10 +729,60 @@ public class PlannerTestCase extends TestCase {
             return "INDEX_SCAN_NODE[" + m_indexName + "]";
         }
     }
+
+    /**
+     * This is a plan node which is optional.  If the match
+     * function is applied to a node and fails we don't
+     * move on to the next node.  This just defers to
+     * the parameter node.  The magic happens in validatePlan.
+     *
+     * This is useful for writing a function which validates
+     * plan patterns.  For example, we may sometimes have two
+     * sql statements, S1 and S2, have similar plans, but one
+     * has an extra projection node.  We can write a function
+     * to match them, match the projection node if it
+     * shows up and just continue matching if the projection
+     * node does not show up.
+     */
+    protected static class OptionalPlanNode implements PlanMatcher {
+
+        private final PlanMatcher m_nodeMatcher;
+
+        public OptionalPlanNode(PlanMatcher nodeMatcher) {
+            m_nodeMatcher = nodeMatcher;
+        }
+        @Override
+        public String match(AbstractPlanNode node,
+                            int fragmentNo,
+                            int numFragments) {
+            return m_nodeMatcher.match(node, fragmentNo, numFragments);
+        }
+
+        @Override
+        public String matchName() {
+            return m_nodeMatcher.matchName();
+        }
+    }
+
+    /**
+     * Match a plan with inline nodes.  All inline nodes must be
+     * listed.  Optional inline nodes are not allowed here.
+     */
     protected static class PlanWithInlineNodes implements PlanMatcher {
         PlanMatcher m_type = null;
 
         List<PlanMatcher> m_branches = new ArrayList<>();
+
+        /**
+         * Create a matcher for a plan node with inline nodes.
+         *
+         * @param mainType This is the matcher for the main node.
+         *                 It is typically a node type, but it coule
+         *                 be something like {@link IndexScanPlanMatcher}
+         *                 or the final static member AbstractJoinPlanNodeMatcher.
+         * @param nodes These are matchers for the inline nodes.  These are
+         *              typically node types, but they can be any PlanMatcher.
+         */
         public PlanWithInlineNodes(PlanMatcher mainType, PlanMatcher ... nodes) {
             m_type = mainType;
             for (PlanMatcher node : nodes) {
@@ -888,7 +938,7 @@ public class PlannerTestCase extends TestCase {
                 }
             };
 
-    protected static PlanMatcher AbstractJoinPlanNodeMatcher
+    protected final static PlanMatcher AbstractJoinPlanNodeMatcher
             = new PlanMatcher() {
                     public String match(AbstractPlanNode p,
                                         int fragmentNo,
@@ -921,6 +971,13 @@ public class PlannerTestCase extends TestCase {
                 PlanMatcher pm = m_nodeSpecs.get(idx);
                 String err = pm.match(node, fragmentNo, numberFragments);
                 if (err != null) {
+                    /*
+                     * This is the magic of OptionalPlanNode.
+                     * If this spec fails, then just ignore it.
+                     */
+                    if ( pm instanceof OptionalPlanNode ) {
+                        continue;
+                    }
                     return err;
                 }
                 // Nodes with multiple children, such as join
