@@ -63,32 +63,34 @@ public class TestPlansGroupBy extends PlannerTestCase {
     }
 
     public void testInlineSerialAgg_noGroupBy() {
-        checkSimpleTableInlineAgg("SELECT SUM(A1) from T1");
-        checkSimpleTableInlineAgg("SELECT MIN(A1) from T1");
-        checkSimpleTableInlineAgg("SELECT MAX(A1) from T1");
-        checkSimpleTableInlineAgg("SELECT SUM(A1), COUNT(A1) from T1");
+        checkSimpleTableInlineAgg("SELECT SUM(A1) from T1", PlanNodeType.SEQSCAN);
+        checkSimpleTableInlineAgg("SELECT MIN(A1) from T1", PlanNodeType.SEQSCAN);
+        checkSimpleTableInlineAgg("SELECT MAX(A1) from T1", PlanNodeType.SEQSCAN);
+        checkSimpleTableInlineAgg("SELECT SUM(A1), COUNT(A1) from T1", PlanNodeType.SEQSCAN);
 
         // There is no index defined on column B3
-        checkSimpleTableInlineAgg("SELECT SUM(A3) from T3 WHERE B3 > 3");
-        checkSimpleTableInlineAgg("SELECT MIN(A3) from T3 WHERE B3 > 3");
-        checkSimpleTableInlineAgg("SELECT MAX(A3) from T3 WHERE B3 > 3");
-        checkSimpleTableInlineAgg("SELECT COUNT(A3) from T3 WHERE B3 > 3");
+        checkSimpleTableInlineAgg("SELECT SUM(A3) from T3 WHERE B3 > 3", PlanNodeType.SEQSCAN);
+        checkSimpleTableInlineAgg("SELECT MIN(A3) from T3 WHERE B3 > 3", PlanNodeType.SEQSCAN);
+        checkSimpleTableInlineAgg("SELECT MAX(A3) from T3 WHERE B3 > 3", PlanNodeType.SEQSCAN);
+        checkSimpleTableInlineAgg("SELECT COUNT(A3) from T3 WHERE B3 > 3", PlanNodeType.SEQSCAN);
 
         // Index scan
-        checkSimpleTableInlineAgg("SELECT SUM(A3) from T3 WHERE PKEY > 3");
-        checkSimpleTableInlineAgg("SELECT MIN(A3) from T3 WHERE PKEY > 3");
-        checkSimpleTableInlineAgg("SELECT MAX(A3) from T3 WHERE PKEY > 3");
-        checkSimpleTableInlineAgg("SELECT COUNT(A3) from T3 WHERE PKEY > 3");
+        checkSimpleTableInlineAgg("SELECT SUM(A3) from T3 WHERE PKEY > 3", PlanNodeType.INDEXSCAN);
+        checkSimpleTableInlineAgg("SELECT MIN(A3) from T3 WHERE PKEY > 3", PlanNodeType.INDEXSCAN);
+        checkSimpleTableInlineAgg("SELECT MAX(A3) from T3 WHERE PKEY > 3", PlanNodeType.INDEXSCAN);
+        checkSimpleTableInlineAgg("SELECT COUNT(A3) from T3 WHERE PKEY > 3", PlanNodeType.INDEXSCAN);
     }
 
-    private void checkSimpleTableInlineAgg(String sql) {
+    private void checkSimpleTableInlineAgg(String sql, PlanNodeType scanType) {
         validatePlan(sql,
                      PRINT_JSON_PLAN,
                      fragSpec(PlanNodeType.SEND,
                               PlanNodeType.AGGREGATE,
                               PlanNodeType.RECEIVE),
                      fragSpec(PlanNodeType.SEND,
-                              AbstractScanPlanNodeMatcher));
+                              new PlanWithInlineNodes(scanType,
+                                                      PlanNodeType.PROJECTION,
+                                                      PlanNodeType.AGGREGATE)));
     }
 
     // AVG is optimized with SUM / COUNT, generating extra projection node
