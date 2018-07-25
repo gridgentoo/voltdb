@@ -2530,25 +2530,30 @@ public class PlanAssembler {
     private boolean switchToOrderedScanForGroupBy(AbstractPlanNode candidate,
                                                   GroupByOrderInfo gbInfo) {
         // This is only a useful analysis and transformation when
-        // we have an aggregate expression and group by keys.
-        // If we have no group by
-        // keys, then we can use a serial aggregation without
-        // a any ordering.  It's all one big group, after all.
-        // If we don't have
-        if (! ( m_parsedSelect.hasAggregateExpression()
-                && m_parsedSelect.isGrouped() ) ) {
+        // we have group by keys.  If we have no group by keys, then we
+        // can use a serial aggregation without any ordering.  This is
+        // true for large and normal queries.  It's all one big
+        // group, after all, in both query sizes.
+        if (! m_parsedSelect.isGrouped()) {
+            // Use serial aggregation.  This is doesn't need
+            // an order by or index scan.
             return false;
         }
 
         if (candidate instanceof IndexScanPlanNode) {
+            // See if this index scan is helpful.
             calculateIndexGroupByInfo((IndexScanPlanNode) candidate, gbInfo);
             if (!m_isLargeQuery &&
                     gbInfo.m_coveredGroupByColumns != null &&
                     !gbInfo.m_coveredGroupByColumns.isEmpty()) {
                 // The candidate index does cover all or some
-                // of the GROUP BY columns and can be serialized.
-                // This will be partial serialization, which we
-                // can't have for large temp table queries.
+                // of the GROUP BY keys and can be serialized.
+                // If all keys are covered this will be serial
+                // aggregation.  In only some are covered, then
+                // this will be will be partial serialization.
+                // We can't have partial serialization for large
+                // temp table queries, but calculateIndexGroupByInfo
+                // knows that already.
                 gbInfo.m_sortedNode = candidate;
                 return true;
             }
@@ -2809,7 +2814,7 @@ public class PlanAssembler {
                         m_parsedSelect.hasPartitionColumnInGroupby()) {
                     AbstractPlanNode candidate = root.getChild(0).getChild(0);
                     gbInfo.m_multiPartition = true;
-                    boolean didSwitch = switchToOrderedScanForGroupBy(candidate, gbInfo);
+                    switchToOrderedScanForGroupBy(candidate, gbInfo);
                 }
             }
             else if (switchToOrderedScanForGroupBy(root, gbInfo)) {
@@ -3148,9 +3153,10 @@ public class PlanAssembler {
     // on top of root and return that.
     private AbstractPlanNode indexAccessForGroupByExprs(SeqScanPlanNode root,
             GroupByOrderInfo gbInfo) {
-        if (! root.isPersistentTableScan()) {
+        if (! m_isLargeQuery && ! root.isPersistentTableScan() ) {
             // subquery and common tables are not handled.
-            // No indexes there.
+            // No indexes there.  This will compel a hash aggregate,
+            // so we can't do this for large queries.
             return root;
         }
 
@@ -3180,7 +3186,9 @@ public class PlanAssembler {
             ArrayList<AbstractExpression> bindings = new ArrayList<>();
             List<Integer> coveredGroupByColumns = calculateGroupbyColumnsCovered(
                     index, fromTableAlias, bindings);
-
+            // If we have more columns in this index than the
+            // previous largest index, then remember this index
+            // as the best fit.
             if (coveredGroupByColumns.size() > maxCoveredGroupByColumns.size()) {
                 maxCoveredGroupByColumns = coveredGroupByColumns;
                 pickedUpIndex = index;
@@ -3200,12 +3208,16 @@ public class PlanAssembler {
         if (pickedUpIndex == null
                 || (m_isLargeQuery && !foundAllGroupByCoveredIndex)) {
             // Add an order by if necessary for forced serial aggregation.
-            if (m_parsedSelect != null && m_isLargeQuery) {
+            // For ordinary sized queries we never add this, we just
+            // return the original, unchanged root.
+            if (m_isLargeQuery) {
                 return addOrderByForSerialAggregation(root, gbInfo);
             }
             return root;
         }
 
+        // We have an index.  If m_isLargeQuery then all group by
+        // keys must be covered.
         IndexScanPlanNode indexScanNode = new IndexScanPlanNode(
                 root, null, pickedUpIndex, SortDirectionType.INVALID);
         indexScanNode.setForGroupingOnly();
@@ -3213,6 +3225,11 @@ public class PlanAssembler {
 
         gbInfo.m_coveredGroupByColumns = maxCoveredGroupByColumns;
         gbInfo.m_canBeFullySerialized = foundAllGroupByCoveredIndex;
+        // If this is a large query we must have found all the
+        // group by keys here. If we didn't find all the group
+        // by keys we would have returned in the last conditional.
+        assert ( ! m_isLargeQuery || foundAllGroupByCoveredIndex );
+        root.addAndLinkChild(indexScanNode);
         return indexScanNode;
     }
 

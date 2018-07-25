@@ -731,9 +731,23 @@ public class PlannerTestCase extends TestCase {
         }
     }
 
+    /**
+     * Match an aggregate node of some kind.  This can
+     * be hash, partial or serial aggregate.
+     */
     protected static class AggregateNodeMatcher implements PlanMatcher {
         private PlanMatcher m_mainMatcher;
         private ExpressionType[] m_aggOps;
+
+        /**
+         * Create a plan matcher which will match an aggregate,
+         * with a set of aggregate operations.
+         * @param mainMatcher The node matcher.  This a plan matcher.
+         *                    Any node which matches this matcher must
+         *                    be an instance of AggregatePlanNode.
+         * @param aggOps An array of aggregate expressions.  This must
+         *               be a subset of the node's aggregate operations.
+         */
         public AggregateNodeMatcher(PlanMatcher mainMatcher,
                                     ExpressionType ... aggOps) {
             m_mainMatcher = mainMatcher;
@@ -1220,10 +1234,6 @@ public class PlannerTestCase extends TestCase {
                                 boolean printPlan,
                                 FragmentSpec ... spec) {
         List<AbstractPlanNode> fragments = compileToFragments(SQL);
-        assertEquals(String.format("Expected %d fragments, got %d",
-                                   spec.length,
-                                   fragments.size()),
-                     fragments.size(), fragments.size());
         if (printPlan) {
             System.out.printf("SQL: %s\n", SQL);
             for (int idx = 0; idx < fragments.size(); idx += 1) {
