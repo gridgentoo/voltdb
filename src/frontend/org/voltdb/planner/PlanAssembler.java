@@ -2530,8 +2530,13 @@ public class PlanAssembler {
     private boolean switchToOrderedScanForGroupBy(AbstractPlanNode candidate,
                                                   GroupByOrderInfo gbInfo) {
         // This is only a useful analysis and transformation when
-        // we have group by keys, or if we have aggregate functions.
-        if (! m_parsedSelect.hasAggregateOrGroupby()) {
+        // we have an aggregate expression and group by keys.
+        // If we have no group by
+        // keys, then we can use a serial aggregation without
+        // a any ordering.  It's all one big group, after all.
+        // If we don't have
+        if (! ( m_parsedSelect.hasAggregateExpression()
+                && m_parsedSelect.isGrouped() ) ) {
             return false;
         }
 
@@ -2594,7 +2599,7 @@ public class PlanAssembler {
             default:
                 // If this is an LTT query returning
                 // false is a disaster.
-                assert( ! m_isLargeQuery );
+                assert( ! m_isLargeQuery);
                 return false;
         }
 
@@ -2799,15 +2804,12 @@ public class PlanAssembler {
                 // if this is a large temp table query, or there is no
                 // distinct aggregate or one of the group by expressions
                 // is a partition column.
-                if ( m_isLargeQuery ||
+                if ( ( m_isLargeQuery && m_parsedSelect.isGrouped() ) ||
                         ! m_parsedSelect.hasAggregateDistinct() ||
                         m_parsedSelect.hasPartitionColumnInGroupby()) {
                     AbstractPlanNode candidate = root.getChild(0).getChild(0);
                     gbInfo.m_multiPartition = true;
                     boolean didSwitch = switchToOrderedScanForGroupBy(candidate, gbInfo);
-                    // If this is a large query then we had better have
-                    // switched to an ordered scan.
-                    assert ( !m_isLargeQuery || didSwitch );
                 }
             }
             else if (switchToOrderedScanForGroupBy(root, gbInfo)) {

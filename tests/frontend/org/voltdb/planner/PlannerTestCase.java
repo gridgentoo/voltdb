@@ -28,6 +28,7 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import org.apache.commons.lang3.StringUtils;
+import org.hsqldb_voltpatches.Expression;
 import org.hsqldb_voltpatches.HSQLInterface.HSQLParseException;
 import org.hsqldb_voltpatches.VoltXMLElement;
 import org.voltdb.catalog.Catalog;
@@ -730,6 +731,43 @@ public class PlannerTestCase extends TestCase {
         }
     }
 
+    protected static class AggregateNodeMatcher implements PlanMatcher {
+        private PlanMatcher m_mainMatcher;
+        private ExpressionType[] m_aggOps;
+        public AggregateNodeMatcher(PlanMatcher mainMatcher,
+                                    ExpressionType ... aggOps) {
+            m_mainMatcher = mainMatcher;
+            m_aggOps = aggOps;
+        }
+
+        @Override
+        public String match(AbstractPlanNode node,
+                            int fragmentNo,
+                            int numFragments) {
+            String err = m_mainMatcher.match(node, fragmentNo, numFragments);
+            if (err != null) {
+                return err;
+            }
+            // This is really a test failure.  The matcher
+            // should be something like an AggregatePlanNode.
+            assertTrue("Expected an AggregatePlanNode, not " + node.getPlanNodeType(),
+                       node instanceof AggregatePlanNode);
+            AggregatePlanNode pn = (AggregatePlanNode) node;
+            List<ExpressionType> expTypes = pn.getAggregateTypes();
+            for (ExpressionType type : m_aggOps) {
+                if ( ! expTypes.contains(type)) {
+                    return String.format("Expected aggregate %s here", type);
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public String matchName() {
+            return String.format("AggregateNode(%s)",
+                                 m_mainMatcher.matchName());
+        }
+    }
     /**
      * This is a plan node which is optional.  If the match
      * function is applied to a node and fails we don't
@@ -1209,4 +1247,5 @@ public class PlannerTestCase extends TestCase {
         String jsonString = node.toJSONExplainString(m_aide.m_planForLargeQueries);
         System.out.printf("Json:\n%s\n", jsonString);
     }
+
 }
