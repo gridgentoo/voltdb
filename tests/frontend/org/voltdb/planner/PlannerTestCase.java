@@ -342,6 +342,10 @@ public class PlannerTestCase extends TestCase {
         m_aide.planForLargeQueries(b);
     }
 
+    protected boolean isPlanningForLargeQueries() {
+        return m_aide.isPlanningForLargeQueries();
+    }
+
     public String getCatalogString() {
         return m_aide.getCatalogString();
     }

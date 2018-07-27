@@ -226,4 +226,8 @@ public class PlannerTestAideDeCamp {
     public void planForLargeQueries(boolean b) {
         m_planForLargeQueries = b;
     }
+
+    public boolean isPlanningForLargeQueries() {
+        return m_planForLargeQueries;
+    }
 }

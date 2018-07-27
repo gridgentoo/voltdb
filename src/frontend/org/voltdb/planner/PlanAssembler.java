@@ -2814,7 +2814,13 @@ public class PlanAssembler {
                         m_parsedSelect.hasPartitionColumnInGroupby()) {
                     AbstractPlanNode candidate = root.getChild(0).getChild(0);
                     gbInfo.m_multiPartition = true;
+                    if (m_isLargeQuery) {
+                        System.out.printf("Before switch:\n%s\n", root.toJSONExplainString(m_isLargeQuery));
+                    }
                     switchToOrderedScanForGroupBy(candidate, gbInfo);
+                    if (m_isLargeQuery) {
+                        System.out.printf("After switch:\n%s\n", root.toJSONExplainString(m_isLargeQuery));
+                    }
                 }
             }
             else if (switchToOrderedScanForGroupBy(root, gbInfo)) {
