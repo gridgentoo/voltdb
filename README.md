@@ -13,6 +13,8 @@
 ![Image alt](https://www.opennet.ru/opennews/pics_base/0_1359134873.png)
 
 Aqua Data Studio provides a management tool for the VoltDB[1] relational database with administration capabilities and a database query tool.
+![Image alt](https://www.aquafold.com/dbspecific/images/voltdb/aquadatastudio_voltdb_schema_browser.png)
+
 ![Image alt](https://www.aquafold.com/dbspecific/images/voltdb/aquadatastudio_voltdb_er_modeler.png)
 
 
