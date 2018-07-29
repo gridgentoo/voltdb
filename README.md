@@ -21,6 +21,8 @@ Zookeeper для динамической конфигурации в реаль
 
 ![Image alt](https://res.infoq.com/articles/why-abandon-mysql-choose-voltdb/zh/resources/24.jpg)
 
+Таким образом, создается платформа приложений VoltDB с ежедневной записью 1 миллиарда записей в и из VoltDB и 24-часовых данных. 
+
 ![Image alt](https://www.opennet.ru/opennews/pics_base/0_1359134873.png)
 
 Aqua Data Studio provides a management tool for the VoltDB[1] relational database with administration capabilities and a database query tool.
