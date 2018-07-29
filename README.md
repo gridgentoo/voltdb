@@ -37,14 +37,14 @@ Aqua Data Studio provides a management tool for the VoltDB[1] relational databas
 
 Таким образом, мы использовали Zookeeper для динамической конфигурации в реальном времени, которая может управлять измененными данными в VoltDB, а также управлять данными в разных схемах (одна и та же таблица, но с использованием разных стратегий разбиения на разделы и разбиение на несколько таблиц) ,
 
-What is VoltDB?
+# What is VoltDB?
 ====================
 
 Thank you for your interest in VoltDB!
 
 VoltDB is a horizontally-scalable, in-memory SQL RDBMS designed for applications that benefit from strong consistency, high throughput and low, predictable latency.
 
-VoltDB and Open Source
+# VoltDB and Open Source
 ====================
 
 VoltDB offers the fully open source, AGPL3-licensed Community Edition of VoltDB through GitHub here: 
@@ -63,7 +63,7 @@ For more information, please see our "Editions" page:
 
 https://www.voltdb.com/product/editions/
 
-VoltDB Branches and Tags
+# VoltDB Branches and Tags
 ====================
 
 The latest development branch is _master_. We develop features on branches and merge to _master_ when stable. While _master_ is usually stable, it should not be considered production-ready and may also have partially implemented features.
@@ -71,7 +71,7 @@ The latest development branch is _master_. We develop features on branches and m
 Code that corresponds to released versions of VoltDB are tagged "voltdb-X.X" or "voltdb-X.X.X". To build corresponding OSS VoltDB versions, use these tags.
 
 
-Building VoltDB
+# Building VoltDB
 ====================
 
 Information on building VoltDB from this source repository is maintained in a GitHub wiki page available here:
@@ -79,7 +79,7 @@ Information on building VoltDB from this source repository is maintained in a Gi
 https://github.com/VoltDB/voltdb/wiki/Building-VoltDB
 
 
-First Steps
+# First Steps
 ====================
 
 From the directory where you installed VoltDB, you can either use bin/{command} or add the bin folder to your path so you can use the VoltDB commands anywhere. For example:
@@ -169,7 +169,7 @@ If you have installed VoltDB from the distribution kit, you now have a directory
   - voltdb-version.jar - The full VoltDB binary, including platform-specific native libraries embedded within the jar. This is a superset of the client code and can be used as a native client driver or JDBC driver.
 
 
-Commercial VoltDB Differences
+# Commercial VoltDB Differences
 ====================
 
 VoltDB offers a pre-built binary distribution of VoltDB under a commercial license. It can be downloaded from the VoltDB website. This download includes a 30 day trial license.
